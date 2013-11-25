@@ -55,15 +55,28 @@ namespace XPlatformCloudKit.DataServices
 
                     if (!String.IsNullOrWhiteSpace(RemoteRssFile))
                     {
-                        // Parse the file into a list of strings.  Split by either carraige return, or
-                        //  line feed to account for platform  differences in the platform that created 
-                        //  the remote RSS feeds list file.  
-                        string[] arrayCRLF = { "\r", "\n" };
-                        string[] RemoteRssSources = RemoteRssFile.Split(arrayCRLF, StringSplitOptions.RemoveEmptyEntries);
+                        if (AppSettings.RemoteRssSourceUrlType == "csv")
+                        {
+                            // Parse the file into a list of strings.  Split by either carraige return, or
+                            //  line feed to account for platform  differences in the platform that created 
+                            //  the remote RSS feeds list file.  
+                            string[] arrayCRLF = { "\r", "\n" };
+                            string[] RemoteRssSources = RemoteRssFile.Split(arrayCRLF, StringSplitOptions.RemoveEmptyEntries);
 
-                        // Now parse each additional feed and add it to the master collection.
-                        foreach (string rssSourceAsStr in RemoteRssSources)
-                            listRssSources.Add(stringToRssSource(rssSourceAsStr));
+                            // Now parse each additional feed and add it to the master collection.
+                            foreach (string rssSourceAsStr in RemoteRssSources)
+                                listRssSources.Add(stringToRssSource(rssSourceAsStr));
+                        }
+                        if (AppSettings.RemoteRssSourceUrlType=="opml")
+                        {
+                            XDocument opmlDocument = XDocument.Parse(RemoteRssFile);
+                            var bodyNode = opmlDocument.Descendants("body").First();
+                            var outlines = bodyNode.Elements("outline");
+                            foreach (var outline in outlines)
+                            {
+                                listRssSources.AddRange(opmlNodeToRssSource(outline, string.Empty));			                    
+                            }
+                        }
                     }
                 }
 
@@ -193,6 +206,38 @@ namespace XPlatformCloudKit.DataServices
                 throw new FormatException("Found a YouTube API feed that returns the default ATOM format, which we can not parse.  Append 'alt=rss' (lowercase) to the URL to fix this problem if applicable.");
 
             return new RssSource() { Url = theUrl, Group = theGroup };
+        }
+
+        /// <summary>
+        /// Parse a "opmlnode" that should be a rss type opml node and group string into an RssSource object.
+        /// </summary>
+        private RssSource[] opmlNodeToRssSource(XElement opmlNodeElement,string group="")
+        {
+            var result = new List<RssSource>();
+            var nodeType = opmlNodeElement.Attribute("type")!=null ? opmlNodeElement.Attribute("type").Value : string.Empty;
+            string theText = opmlNodeElement.Attribute("text")!=null ? opmlNodeElement.Attribute("text").Value : string.Empty;
+            var subGroupName = string.IsNullOrEmpty(group) ? theText : string.Format("{0} - {1}", group, theText);
+
+            if (nodeType == "rss")
+            {
+                string theUrl = opmlNodeElement.Attribute("xmlUrl")!=null ? opmlNodeElement.Attribute("xmlUrl").Value : string.Empty;
+
+                if (String.IsNullOrWhiteSpace(theUrl))
+                    throw new FormatException("The following type is not a valid OPML RSS xmlUrl: " + theUrl);
+
+                result.Add(new RssSource() { Url = theUrl, Group = subGroupName });
+            }
+            if (string.IsNullOrEmpty(nodeType))
+            {
+                var subOutlines = opmlNodeElement.Elements("outline");
+
+                foreach (var outlineNode in subOutlines)
+                {
+                    result.AddRange(opmlNodeToRssSource(outlineNode, subGroupName));
+                }
+            }
+        
+            return result.ToArray();
         }
     }
 }

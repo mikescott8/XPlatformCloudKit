@@ -45,7 +45,7 @@ namespace XPlatformCloudKit
 
         #region RssService Settings
         public const bool EnableRssService = true;//Use RssAddressCollection 
-        public const int RssMaxItemsPerFeed = 10; //The Maximum number of items to fetch for each feed. Enter Negative value to fetch all.
+        public const int RssMaxItemsPerFeed = -1; //The Maximum number of items to fetch for each feed. Enter Negative value to fetch all.
 
         //Urls to an RSS Data Source 
         //i.e. http://reddit.com/r/technology/.rss
@@ -68,8 +68,13 @@ namespace XPlatformCloudKit
 
         /*
          * Put the URL to a file on a web server you control that will contain a list of additional RSS
-         *  feeds you want to add to the list of feeds in RssAddressCollection below.  The file should
-         *  be a simple CSV file containing two fields per line, with the fields separate by a comma.
+         *  feeds you want to add to the list of feeds in RssAddressCollection below.  
+         *  
+         * Make sure EnableRssService to set to TRUE or the remote content (or the RSS feeds below) will 
+         *  not be accessed.  Leave RemoteRssSourceUrl blank if you do not want to use the remote RSS
+         *  feature.
+         *  
+         * 1) The file can be a simple CSV file containing two fields per line, with the fields separate by a comma.
          *  The first field should be a valid RSS URL and the second field should be the group name
          *  you want the feed assigned to.
          *
@@ -78,13 +83,49 @@ namespace XPlatformCloudKit
          *  https://gdata.youtube.com/feeds/api/users/TheWindotnet/uploads?orderby=updated&alt=rss, "Remote RSS Feed Example"
          *  https://gdata.youtube.com/feeds/api/users/roschler/uploads?orderby=updated&alt=rss, "Remote RSS Feed Example"
          *
-         * Make sure EnableRssService to set to TRUE or the remote content (or the RSS feeds below) will 
-         *  not be accessed.  Leave RemoteRssSourceUrl blank if you do not want to use the remote RSS
-         *  feature.
+         * 2) The file can be a simple OPML file containing xml that conforms to the OPML format spec found at:
+         *  http://dev.opml.org/spec2.html
+         *  
+         * Each outline node in the body node of the OPML file will be processed recursively assigning the value in the
+         *  'text' attribute as the group, adding to the group name for each level in the node structure.
+         *  Each outline node with it's 'type'attribute set to 'rss' will return an RssSource object with the Url
+         *   set to the 'xmlUrl' attribute's value, and the group set to the ancestor's nodes 'text'attributes
+         *   concatenated as the group name.
+         *   
+         * Here's an example of the elements in the body element of a sample remote OPML file. No assurance the 
+         *  linked Rss feeds are valid still, may be out of date.
+         * 
+         * <body>
+         *   <outline text="Independent">
+         *     <outline text="Disney themed podcasts NOT produced by the Walt Disney Company"/>
+         *     <outline text="A Window To The Magic (Added 11/21/2005)">
+         *       <outline text="A WindowToTheMagic Podcast" type="rss" xmlUrl="http://pbarrie.libsyn.com/rss"/>
+         *       <outline text="WTTM24: A REAL-TIME DISNEY AUDIO ADVENTURE" type="rss" xmlUrl="http://feeds.feedburner.com/wttm24"/>
+         *       <outline text="A WindowToTheMagic Video" type="rss" xmlUrl="http://pbarrie.libsyn.com/rss/VideoCast"/>
+         *     </outline
+         *   </outline>
+         * </body>
+         * 
+         * would result in :
+         *   RssSource { Url="http://pbarrie.libsyn.com/rss", 
+         *     Group="Independent - A Window To The Magic (Added 11/21/2005) - A WindowToTheMagic Podcast"}
+         *   RssSource { Url="http://feeds.feedburner.com/wttm24", 
+         *     Group="Independent - A Window To The Magic (Added 11/21/2005) - WTTM24: A REAL-TIME DISNEY AUDIO ADVENTURE"}
+         *   RssSource { Url="http://pbarrie.libsyn.com/rss/VideoCast", 
+         *     Group="Independent - A Window To The Magic (Added 11/21/2005) - A WindowToTheMagic Video"}
          */
+
         //The value below can be used to test RemoteRssSourceUrl
         //public const string RemoteRssSourceUrl = "http://robodance.com/xplatformcloudkit/remote-rss-feed-sample.txt";
+        //The value below can be used to test RemoteRssSourceUrl as OPML
+        //public const string RemoteRssSourceUrl = "http://www.disneypodcastdirectory.net/opml/sample.xml";
         public const string RemoteRssSourceUrl = "";
+
+        /*
+         * default of "csv" uses standard remote file processing
+         * Set this to "opml" if the RemoteRssSourceUrl points to an OPML format file.
+         */
+        public const string RemoteRssSourceUrlType = "csv";
 
         #endregion
 
@@ -148,6 +189,5 @@ namespace XPlatformCloudKit
         //When enabled, hyperlinks will not open in a new tab
         public const bool DisableOpeningHyperLinksInNewTab = true;
         #endregion
-
     }
 }
