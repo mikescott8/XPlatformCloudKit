@@ -35,6 +35,9 @@ namespace XPlatformCloudKit.Views
                 ((ApplicationBarIconButton)ApplicationBar.Buttons[0]).IsEnabled = false;
             if(selectedIndex == AppState.SelectedGroup.Count - 1)
                 ((ApplicationBarIconButton)ApplicationBar.Buttons[2]).IsEnabled = false;
+
+            if (AppSettings.EnablePhone8Background == true)
+                LayoutRoot.Background = Application.Current.Resources["WallPaperBrush"] as ImageBrush;
         }
 
         private void NextButton_Click(object sender, EventArgs e)
@@ -165,6 +168,18 @@ namespace XPlatformCloudKit.Views
         private void ApplicationBarIconButton_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void Canvas_Tap(object sender, System.Windows.Input.GestureEventArgs e)
+        {
+            CanvasPanel.Visibility = Visibility.Collapsed;
+            ContentPanel.Visibility = Visibility.Visible;
+        }
+
+        private void Image_Tap(object sender, System.Windows.Input.GestureEventArgs e)
+        {
+            CanvasPanel.Visibility = Visibility.Visible;
+            ContentPanel.Visibility = Visibility.Collapsed;
         }
     }
 }
